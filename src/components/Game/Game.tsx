@@ -138,19 +138,19 @@ export const Game: React.FC = () => {
             const winner = value1 > value2 ? player1 : player2;
             const loser = value1 > value2 ? player2 : player1;
             
-            // Remove top cards
-            const winnerDeck = winner.deck.slice(1);
-            const loserDeck = loser.deck.slice(1);
+            // Remove top cards from both decks
+            const winnerRemainingDeck = winner.deck.slice(1);
+            const loserRemainingDeck = loser.deck.slice(1);
             
-            // Add cards to winner's pile
-            winnerDeck.push(card1, card2);
+            // Add both cards to winner's deck (without duplicating)
+            const winnerNewDeck = [...winnerRemainingDeck, player1.deck[0], player2.deck[0]];
             
             if (winner.id === player1.id) {
-                setPlayer1({ ...player1, deck: winnerDeck });
-                setPlayer2({ ...player2, deck: loserDeck });
+                setPlayer1({ ...player1, deck: winnerNewDeck });
+                setPlayer2({ ...player2, deck: loserRemainingDeck });
             } else {
-                setPlayer2({ ...player2, deck: winnerDeck });
-                setPlayer1({ ...player1, deck: loserDeck });
+                setPlayer2({ ...player2, deck: winnerNewDeck });
+                setPlayer1({ ...player1, deck: loserRemainingDeck });
             }
         }
     };
@@ -188,12 +188,10 @@ export const Game: React.FC = () => {
         const value1 = getCardValue(warCard1.rank);
         const value2 = getCardValue(warCard2.rank);
         
-        // Collect all cards involved in the war
+        // Collect all cards involved in the war (without duplicating them)
         const warCards = [
-            ...player1.deck.slice(0, 5), // Original card + 3 face down + war card
-            ...player2.deck.slice(0, 5),
-            ...player1.warPile,
-            ...player2.warPile
+            ...player1.deck.slice(0, 5), // First 5 cards from player 1 (original + 3 face down + war card)
+            ...player2.deck.slice(0, 5)  // First 5 cards from player 2 (original + 3 face down + war card)
         ];
         
         if (value1 === value2) {
@@ -203,19 +201,19 @@ export const Game: React.FC = () => {
             const winner = value1 > value2 ? player1 : player2;
             const loser = value1 > value2 ? player2 : player1;
             
-            // Remove used cards from both decks
-            const winnerDeck = winner.deck.slice(5);
-            const loserDeck = loser.deck.slice(5);
+            // Remove the used cards from both decks
+            const winnerRemainingDeck = winner.deck.slice(5);
+            const loserRemainingDeck = loser.deck.slice(5);
             
-            // Add all war cards to winner's deck
-            winnerDeck.push(...warCards);
+            // Add war cards to winner's remaining deck
+            const winnerNewDeck = [...winnerRemainingDeck, ...warCards];
             
             if (winner.id === player1.id) {
-                setPlayer1({ ...player1, deck: winnerDeck, warPile: [] });
-                setPlayer2({ ...player2, deck: loserDeck, warPile: [] });
+                setPlayer1({ ...player1, deck: winnerNewDeck, warPile: [] });
+                setPlayer2({ ...player2, deck: loserRemainingDeck, warPile: [] });
             } else {
-                setPlayer2({ ...player2, deck: winnerDeck, warPile: [] });
-                setPlayer1({ ...player1, deck: loserDeck, warPile: [] });
+                setPlayer2({ ...player2, deck: winnerNewDeck, warPile: [] });
+                setPlayer1({ ...player1, deck: loserRemainingDeck, warPile: [] });
             }
             
             setIsWar(false);
