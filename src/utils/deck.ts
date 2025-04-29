@@ -1,30 +1,46 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Card, SUITS, RANKS } from '../models/Card';
+import { Card, Suit, Rank } from '../models/Card';
 
 export const createDeck = (): Card[] => {
-    const deck: Card[] = [];
+    const player1Cards: Card[] = [];
+    const player2Cards: Card[] = [];
     
-    for (const suit of SUITS) {
-        for (const rank of RANKS) {
-            deck.push({
-                id: uuidv4(),
-                suit,
-                rank,
-                faceUp: false
-            });
-        }
+    // Create cards 2-9 for Player 1 (Hearts)
+    for (let i = 2; i <= 9; i++) {
+        player1Cards.push({
+            id: `hearts-${i}`,
+            suit: 'hearts' as Suit,
+            rank: i.toString() as Rank,
+            faceUp: true
+        });
     }
     
-    return deck;
+    // Create cards 2-9 for Player 2 (Spades)
+    for (let i = 2; i <= 9; i++) {
+        player2Cards.push({
+            id: `spades-${i}`,
+            suit: 'spades' as Suit,
+            rank: i.toString() as Rank,
+            faceUp: false
+        });
+    }
+    
+    return [...player1Cards, ...player2Cards];
 };
 
 export const shuffleDeck = (deck: Card[]): Card[] => {
-    const shuffled = [...deck];
-    for (let i = shuffled.length - 1; i > 0; i--) {
+    // For this game version, we don't shuffle the entire deck
+    // We only shuffle Player 2's cards
+    const player1Cards = deck.slice(0, 9);
+    const player2Cards = deck.slice(9);
+    
+    // Fisher-Yates shuffle for Player 2's cards
+    for (let i = player2Cards.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        [player2Cards[i], player2Cards[j]] = [player2Cards[j], player2Cards[i]];
     }
-    return shuffled;
+    
+    return [...player1Cards, ...player2Cards];
 };
 
 export const dealCards = (deck: Card[], numCards: number): [Card[], Card[]] => {

@@ -1,75 +1,91 @@
+import React from 'react';
 import styled from '@emotion/styled';
-import { motion } from 'framer-motion';
 import { Card as CardType } from '../../models/Card';
 
 interface CardProps {
     card: CardType;
     onClick?: () => void;
     disabled?: boolean;
+    selected?: boolean;
 }
 
-const CardContainer = styled(motion.div)<{ isRed: boolean }>`
+const CardContainer = styled.div<{ disabled?: boolean; selected?: boolean }>`
     width: 100px;
     height: 140px;
-    background: ${props => props.isRed ? '#ffebee' : '#fff'};
-    border: 2px solid #ccc;
     border-radius: 8px;
+    background: white;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    cursor: pointer;
-    user-select: none;
-    position: relative;
-    font-family: 'Arial', sans-serif;
-    
+    cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+    transition: all 0.2s;
+    border: ${props => props.selected ? '3px solid #f1c40f' : '1px solid #bdc3c7'};
+    box-shadow: ${props => props.selected ? '0 0 10px #f1c40f' : '0 2px 4px rgba(0,0,0,0.2)'};
+    opacity: ${props => props.disabled ? 0.7 : 1};
+
     &:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        transform: ${props => !props.disabled && 'translateY(-5px)'};
     }
 `;
 
-const CardContent = styled.div`
+const Suit = styled.div<{ color: string }>`
     font-size: 2em;
+    color: ${props => props.color};
+`;
+
+const Rank = styled.div<{ color: string }>`
+    font-size: 1.5em;
     font-weight: bold;
+    color: ${props => props.color};
 `;
 
-const CardSuit = styled.div<{ isRed: boolean }>`
-    color: ${props => props.isRed ? '#e53935' : '#212121'};
-    font-size: 2.5em;
-    line-height: 1;
-`;
-
-const getSuitSymbol = (suit: CardType['suit']): string => {
-    switch (suit) {
+const getSuitSymbol = (suit: string) => {
+    switch (suit.toLowerCase()) {
         case 'hearts': return '♥';
         case 'diamonds': return '♦';
         case 'clubs': return '♣';
         case 'spades': return '♠';
+        default: return '';
     }
 };
 
-export const Card: React.FC<CardProps> = ({ card, onClick, disabled }) => {
-    const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-    
+const getSuitColor = (suit: string) => {
+    switch (suit.toLowerCase()) {
+        case 'hearts':
+        case 'diamonds':
+            return '#e74c3c';
+        case 'clubs':
+        case 'spades':
+            return '#2c3e50';
+        default:
+            return 'black';
+    }
+};
+
+export const Card: React.FC<CardProps> = ({ card, onClick, disabled, selected }) => {
+    if (!card.faceUp) {
+        return (
+            <CardContainer 
+                onClick={disabled ? undefined : onClick}
+                disabled={disabled}
+                selected={selected}
+                style={{ background: '#34495e' }}
+            />
+        );
+    }
+
+    const suitSymbol = getSuitSymbol(card.suit);
+    const color = getSuitColor(card.suit);
+
     return (
-        <CardContainer
-            isRed={isRed}
+        <CardContainer 
             onClick={disabled ? undefined : onClick}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            disabled={disabled}
+            selected={selected}
         >
-            {card.faceUp ? (
-                <>
-                    <CardContent>{card.rank}</CardContent>
-                    <CardSuit isRed={isRed}>{getSuitSymbol(card.suit)}</CardSuit>
-                </>
-            ) : (
-                <CardContent>🎴</CardContent>
-            )}
+            <Rank color={color}>{card.rank}</Rank>
+            <Suit color={color}>{suitSymbol}</Suit>
         </CardContainer>
     );
 }; 

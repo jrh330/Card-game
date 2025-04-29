@@ -17,7 +17,7 @@ const GameContainer = styled.div`
 
 const Table = styled.div`
     display: grid;
-    grid-template-rows: 1fr auto 1fr;
+    grid-template-rows: auto 1fr auto;
     gap: 2rem;
     padding: 2rem;
     background: #27ae60;
@@ -37,6 +37,14 @@ const PlayerArea = styled.div<{ isBottom?: boolean }>`
     background: rgba(0, 0, 0, 0.1);
     border-radius: 8px;
     ${props => props.isBottom ? 'margin-top: auto;' : ''}
+`;
+
+const CardGrid = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    width: 100%;
 `;
 
 const BattleArea = styled.div`
@@ -82,8 +90,8 @@ const PlayerStats = styled.div`
 export const Game: React.FC = () => {
     const [player1, setPlayer1] = useState<Player>(createPlayer(uuidv4(), "Player 1"));
     const [player2, setPlayer2] = useState<Player>(createPlayer(uuidv4(), "Player 2"));
+    const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
     const [battleCards, setBattleCards] = useState<[CardType | null, CardType | null]>([null, null]);
-    const [isWar, setIsWar] = useState(false);
     const [gameOver, setGameOver] = useState(false);
     const [winner, setWinner] = useState<Player | null>(null);
     
@@ -93,158 +101,94 @@ export const Game: React.FC = () => {
 
     const handleNewGame = () => {
         const deck = shuffleDeck(createDeck());
-        const halfDeck = Math.floor(deck.length / 2);
         
         setPlayer1({
             ...player1,
-            deck: deck.slice(0, halfDeck),
-            warPile: []
+            deck: deck.slice(0, 9),
         });
         
         setPlayer2({
             ...player2,
-            deck: deck.slice(halfDeck),
-            warPile: []
+            deck: deck.slice(9),
         });
         
         setBattleCards([null, null]);
-        setIsWar(false);
+        setSelectedCard(null);
         setGameOver(false);
         setWinner(null);
     };
 
+    const handleCardSelect = (card: CardType) => {
+        if (!selectedCard && !gameOver) {
+            setSelectedCard(card);
+        }
+    };
+
     const handleBattle = () => {
-        if (isWar) {
-            resolveWar();
-            return;
-        }
+        if (!selectedCard || gameOver) return;
 
-        if (player1.deck.length === 0 || player2.deck.length === 0) {
-            endGame();
-            return;
-        }
-
-        const card1 = { ...player1.deck[0], faceUp: true };
-        const card2 = { ...player2.deck[0], faceUp: true };
+        // Get a random card from player 2
+        const randomIndex = Math.floor(Math.random() * player2.deck.length);
+        const player2Card = { ...player2.deck[randomIndex], faceUp: true };
         
-        setBattleCards([card1, card2]);
+        setBattleCards([selectedCard, player2Card]);
         
-        const value1 = getCardValue(card1.rank);
-        const value2 = getCardValue(card2.rank);
+        const value1 = getCardValue(selectedCard.rank);
+        const value2 = getCardValue(player2Card.rank);
+        
+        // Remove the played cards from both decks
+        const player1NewDeck = player1.deck.filter(card => card.id !== selectedCard.id);
+        const player2NewDeck = player2.deck.filter(card => card.id !== player2Card.id);
         
         if (value1 === value2) {
-            handleWar();
+            // Cards are tied, leave them in the battle area
+            setPlayer1({ ...player1, deck: player1NewDeck });
+            setPlayer2({ ...player2, deck: player2NewDeck });
+            setSelectedCard(null);
         } else {
             const winner = value1 > value2 ? player1 : player2;
-            const loser = value1 > value2 ? player2 : player1;
-            
-            // Remove top cards from both decks
-            const winnerRemainingDeck = winner.deck.slice(1);
-            const loserRemainingDeck = loser.deck.slice(1);
-            
-            // Add both cards to winner's deck (without duplicating)
-            const winnerNewDeck = [...winnerRemainingDeck, player1.deck[0], player2.deck[0]];
+            const winnerNewDeck = winner.id === player1.id 
+                ? [...player1NewDeck, selectedCard, player2Card]
+                : [...player2NewDeck, selectedCard, player2Card];
             
             if (winner.id === player1.id) {
                 setPlayer1({ ...player1, deck: winnerNewDeck });
-                setPlayer2({ ...player2, deck: loserRemainingDeck });
+                setPlayer2({ ...player2, deck: player2NewDeck });
             } else {
                 setPlayer2({ ...player2, deck: winnerNewDeck });
-                setPlayer1({ ...player1, deck: loserRemainingDeck });
-            }
-        }
-    };
-
-    const handleWar = () => {
-        setIsWar(true);
-        
-        // Check if either player has enough cards for war
-        if (player1.deck.length < 4 || player2.deck.length < 4) {
-            // Not enough cards for war, end game
-            endGame();
-            return;
-        }
-
-        // Each player puts 3 cards face down
-        const warCards1 = player1.deck.slice(1, 4).map(card => ({ ...card, faceUp: false }));
-        const warCards2 = player2.deck.slice(1, 4).map(card => ({ ...card, faceUp: false }));
-        
-        setPlayer1({ ...player1, warPile: warCards1 });
-        setPlayer2({ ...player2, warPile: warCards2 });
-    };
-
-    const resolveWar = () => {
-        // Get the fourth card from each player (after the 3 face-down cards)
-        if (player1.deck.length < 4 || player2.deck.length < 4) {
-            endGame();
-            return;
-        }
-
-        const warCard1 = { ...player1.deck[4], faceUp: true };
-        const warCard2 = { ...player2.deck[4], faceUp: true };
-        
-        setBattleCards([warCard1, warCard2]);
-        
-        const value1 = getCardValue(warCard1.rank);
-        const value2 = getCardValue(warCard2.rank);
-        
-        // Collect all cards involved in the war (without duplicating them)
-        const warCards = [
-            ...player1.deck.slice(0, 5), // First 5 cards from player 1 (original + 3 face down + war card)
-            ...player2.deck.slice(0, 5)  // First 5 cards from player 2 (original + 3 face down + war card)
-        ];
-        
-        if (value1 === value2) {
-            // Another war! Keep the current cards and start a new war
-            handleWar();
-        } else {
-            const winner = value1 > value2 ? player1 : player2;
-            const loser = value1 > value2 ? player2 : player1;
-            
-            // Remove the used cards from both decks
-            const winnerRemainingDeck = winner.deck.slice(5);
-            const loserRemainingDeck = loser.deck.slice(5);
-            
-            // Add war cards to winner's remaining deck
-            const winnerNewDeck = [...winnerRemainingDeck, ...warCards];
-            
-            if (winner.id === player1.id) {
-                setPlayer1({ ...player1, deck: winnerNewDeck, warPile: [] });
-                setPlayer2({ ...player2, deck: loserRemainingDeck, warPile: [] });
-            } else {
-                setPlayer2({ ...player2, deck: winnerNewDeck, warPile: [] });
-                setPlayer1({ ...player1, deck: loserRemainingDeck, warPile: [] });
+                setPlayer1({ ...player1, deck: player1NewDeck });
             }
             
-            setIsWar(false);
+            setSelectedCard(null);
+            setBattleCards([null, null]);
+            
+            // Check for game over
+            if (winnerNewDeck.length >= 14) {
+                setGameOver(true);
+                setWinner(winner);
+            }
         }
-    };
-
-    const endGame = () => {
-        setGameOver(true);
-        setWinner(player1.deck.length > player2.deck.length ? player1 : player2);
     };
 
     return (
         <GameContainer>
-            <h1 style={{ color: 'white' }}>War Card Game</h1>
+            <h1 style={{ color: 'white' }}>Card Game</h1>
             <Controls>
                 <Button onClick={handleNewGame}>New Game</Button>
                 <Button 
                     onClick={handleBattle}
-                    disabled={gameOver}
+                    disabled={!selectedCard || gameOver}
                 >
-                    {isWar ? "Resolve War" : "Battle!"}
+                    Battle!
                 </Button>
             </Controls>
             
             <Table>
                 <PlayerArea>
                     <PlayerStats>
-                        {player1.name}: {player1.deck.length} cards
-                        {isWar && ` (${player1.warPile.length} cards in war)`}
+                        {player2.name}: {player2.deck.length} cards
                     </PlayerStats>
-                    {battleCards[0] && <Card card={battleCards[0]} disabled />}
+                    {battleCards[1] && <Card card={battleCards[1]} disabled />}
                 </PlayerArea>
                 
                 <BattleArea>
@@ -253,9 +197,9 @@ export const Game: React.FC = () => {
                             {winner?.name} Wins!
                         </div>
                     ) : (
-                        isWar && (
+                        battleCards[0] && battleCards[1] && (
                             <div style={{ color: 'white', fontSize: '2em' }}>
-                                WAR!
+                                {battleCards[0].rank} vs {battleCards[1].rank}
                             </div>
                         )
                     )}
@@ -263,10 +207,19 @@ export const Game: React.FC = () => {
                 
                 <PlayerArea isBottom>
                     <PlayerStats>
-                        {player2.name}: {player2.deck.length} cards
-                        {isWar && ` (${player2.warPile.length} cards in war)`}
+                        {player1.name}: {player1.deck.length} cards
                     </PlayerStats>
-                    {battleCards[1] && <Card card={battleCards[1]} disabled />}
+                    <CardGrid>
+                        {player1.deck.map((card) => (
+                            <Card 
+                                key={card.id}
+                                card={card}
+                                onClick={() => handleCardSelect(card)}
+                                selected={selectedCard?.id === card.id}
+                                disabled={gameOver}
+                            />
+                        ))}
+                    </CardGrid>
                 </PlayerArea>
             </Table>
         </GameContainer>
