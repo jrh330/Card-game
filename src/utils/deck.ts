@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import { Card, Suit, Rank } from '../models/Card';
 
 export const createDeck = (): Card[] => {
