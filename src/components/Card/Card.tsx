@@ -7,6 +7,7 @@ interface CardProps {
     onClick?: () => void;
     disabled?: boolean;
     selected?: boolean;
+    isPlayer1?: boolean;
 }
 
 const CardContainer = styled.div<{ disabled?: boolean; selected?: boolean; isPlayer1?: boolean }>`
@@ -19,7 +20,11 @@ const CardContainer = styled.div<{ disabled?: boolean; selected?: boolean; isPla
     align-items: center;
     cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
     transition: all 0.2s;
-    border: ${props => props.selected ? '3px solid #f1c40f' : '1px solid #bdc3c7'};
+    border: ${props => {
+        if (props.selected) return '3px solid #f1c40f';
+        if (props.isPlayer1 && !props.disabled) return '20px solid #e74c3c';
+        return '1px solid #bdc3c7';
+    }};
     box-shadow: ${props => props.selected ? '0 0 10px #f1c40f' : '0 2px 4px rgba(0,0,0,0.2)'};
     opacity: ${props => props.disabled ? 0.7 : 1};
 
@@ -29,19 +34,20 @@ const CardContainer = styled.div<{ disabled?: boolean; selected?: boolean; isPla
 `;
 
 const Number = styled.div<{ color: string }>`
-    font-size: 3em;
+    font-size: 4.5em;
     font-weight: bold;
     color: ${props => props.color};
     font-family: 'Palatino', 'Garamond', serif;
 `;
 
-export const Card: React.FC<CardProps> = ({ card, onClick, disabled, selected }) => {
+export const Card: React.FC<CardProps> = ({ card, onClick, disabled, selected, isPlayer1 }) => {
     if (!card.faceUp) {
         return (
             <CardContainer 
                 onClick={disabled ? undefined : onClick}
                 disabled={disabled}
                 selected={selected}
+                isPlayer1={isPlayer1}
                 style={{ background: '#34495e' }}
             />
         );
@@ -54,6 +60,7 @@ export const Card: React.FC<CardProps> = ({ card, onClick, disabled, selected })
             onClick={disabled ? undefined : onClick}
             disabled={disabled}
             selected={selected}
+            isPlayer1={isPlayer1}
         >
             <Number color={color}>{card.rank}</Number>
         </CardContainer>

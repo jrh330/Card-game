@@ -121,6 +121,12 @@ const PlayerStats = styled.div`
     margin: 1rem 0;
 `;
 
+const ButtonContainer = styled.div`
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+`;
+
 interface PlayerState extends Player {
     playedCards: CardType[];
     wonCards: CardType[];
@@ -273,11 +279,11 @@ export const Game: React.FC = () => {
                         <PlayedCards>
                             <PlayedCardsLabel>Played Cards:</PlayedCardsLabel>
                             {player2.playedCards.map((card) => (
-                                <Card key={card.id} card={card} disabled />
+                                <Card key={card.id} card={card} disabled isPlayer1={false} />
                             ))}
                         </PlayedCards>
                         {battleCards[1] && (
-                            <Card card={battleCards[1]} disabled />
+                            <Card card={battleCards[1]} disabled isPlayer1={false} />
                         )}
                     </PlayArea>
                 </PlayerArea>
@@ -310,16 +316,22 @@ export const Game: React.FC = () => {
                                     onClick={() => handleCardSelect(card)}
                                     selected={selectedCard?.id === card.id}
                                     disabled={isPlayed || gameOver}
+                                    isPlayer1={true}
                                 />
                             );
                         })}
                     </CardGrid>
-                    <Button 
-                        onClick={handleBattle}
-                        disabled={!selectedCard || gameOver}
-                    >
-                        Battle!
-                    </Button>
+                    <ButtonContainer>
+                        <Button onClick={handleNewGame}>
+                            New Game
+                        </Button>
+                        <Button 
+                            onClick={handleBattle}
+                            disabled={!selectedCard || gameOver}
+                        >
+                            Battle!
+                        </Button>
+                    </ButtonContainer>
                 </PlayerArea>
             </Table>
         </GameContainer>
