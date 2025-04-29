@@ -114,6 +114,11 @@ export const Game: React.FC = () => {
     };
 
     const handleBattle = () => {
+        if (isWar) {
+            resolveWar();
+            return;
+        }
+
         if (player1.deck.length === 0 || player2.deck.length === 0) {
             endGame();
             return;
@@ -153,12 +158,68 @@ export const Game: React.FC = () => {
     const handleWar = () => {
         setIsWar(true);
         
+        // Check if either player has enough cards for war
+        if (player1.deck.length < 4 || player2.deck.length < 4) {
+            // Not enough cards for war, end game
+            endGame();
+            return;
+        }
+
         // Each player puts 3 cards face down
         const warCards1 = player1.deck.slice(1, 4).map(card => ({ ...card, faceUp: false }));
         const warCards2 = player2.deck.slice(1, 4).map(card => ({ ...card, faceUp: false }));
         
         setPlayer1({ ...player1, warPile: warCards1 });
         setPlayer2({ ...player2, warPile: warCards2 });
+    };
+
+    const resolveWar = () => {
+        // Get the fourth card from each player (after the 3 face-down cards)
+        if (player1.deck.length < 4 || player2.deck.length < 4) {
+            endGame();
+            return;
+        }
+
+        const warCard1 = { ...player1.deck[4], faceUp: true };
+        const warCard2 = { ...player2.deck[4], faceUp: true };
+        
+        setBattleCards([warCard1, warCard2]);
+        
+        const value1 = getCardValue(warCard1.rank);
+        const value2 = getCardValue(warCard2.rank);
+        
+        // Collect all cards involved in the war
+        const warCards = [
+            ...player1.deck.slice(0, 5), // Original card + 3 face down + war card
+            ...player2.deck.slice(0, 5),
+            ...player1.warPile,
+            ...player2.warPile
+        ];
+        
+        if (value1 === value2) {
+            // Another war! Keep the current cards and start a new war
+            handleWar();
+        } else {
+            const winner = value1 > value2 ? player1 : player2;
+            const loser = value1 > value2 ? player2 : player1;
+            
+            // Remove used cards from both decks
+            const winnerDeck = winner.deck.slice(5);
+            const loserDeck = loser.deck.slice(5);
+            
+            // Add all war cards to winner's deck
+            winnerDeck.push(...warCards);
+            
+            if (winner.id === player1.id) {
+                setPlayer1({ ...player1, deck: winnerDeck, warPile: [] });
+                setPlayer2({ ...player2, deck: loserDeck, warPile: [] });
+            } else {
+                setPlayer2({ ...player2, deck: winnerDeck, warPile: [] });
+                setPlayer1({ ...player1, deck: loserDeck, warPile: [] });
+            }
+            
+            setIsWar(false);
+        }
     };
 
     const endGame = () => {
@@ -189,10 +250,16 @@ export const Game: React.FC = () => {
                 </PlayerArea>
                 
                 <BattleArea>
-                    {gameOver && (
+                    {gameOver ? (
                         <div style={{ color: 'white', fontSize: '2em' }}>
                             {winner?.name} Wins!
                         </div>
+                    ) : (
+                        isWar && (
+                            <div style={{ color: 'white', fontSize: '2em' }}>
+                                WAR!
+                            </div>
+                        )
                     )}
                 </BattleArea>
                 
