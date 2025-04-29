@@ -269,7 +269,7 @@ export const Game: React.FC = () => {
                     <PlayArea>
                         <PlayedCards>
                             <PlayedCardsLabel>Played Cards:</PlayedCardsLabel>
-                            {player2.playedCards.map((card, index) => (
+                            {player2.playedCards.map((card) => (
                                 <Card key={card.id} card={card} disabled />
                             ))}
                         </PlayedCards>
@@ -278,7 +278,7 @@ export const Game: React.FC = () => {
                         )}
                         <PlayedCards>
                             <PlayedCardsLabel>Won Cards:</PlayedCardsLabel>
-                            {player2.wonCards.map((card, index) => (
+                            {player2.wonCards.map((card) => (
                                 <Card key={card.id} card={card} disabled />
                             ))}
                         </PlayedCards>
@@ -307,7 +307,7 @@ export const Game: React.FC = () => {
                     <PlayArea>
                         <PlayedCards>
                             <PlayedCardsLabel>Played Cards:</PlayedCardsLabel>
-                            {player1.playedCards.map((card, index) => (
+                            {player1.playedCards.map((card) => (
                                 <Card key={card.id} card={card} disabled />
                             ))}
                         </PlayedCards>
@@ -316,7 +316,7 @@ export const Game: React.FC = () => {
                         )}
                         <PlayedCards>
                             <PlayedCardsLabel>Won Cards:</PlayedCardsLabel>
-                            {player1.wonCards.map((card, index) => (
+                            {player1.wonCards.map((card) => (
                                 <Card key={card.id} card={card} disabled />
                             ))}
                         </PlayedCards>
