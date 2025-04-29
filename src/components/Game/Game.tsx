@@ -5,6 +5,9 @@ import { Player, createPlayer } from '../../models/Player';
 import { Card } from '../Card/Card';
 import { createDeck, shuffleDeck } from '../../utils/deck';
 import { v4 as uuidv4 } from 'uuid';
+import { ref, set, onValue, off, get } from 'firebase/database';
+import { database } from '../../firebase';
+import { GameLobby } from '../GameLobby/GameLobby';
 
 const GameContainer = styled.div`
     display: flex;
@@ -127,150 +130,210 @@ const ButtonContainer = styled.div`
     margin-top: 1rem;
 `;
 
-interface PlayerState extends Player {
+interface GameState extends Player {
     playedCards: CardType[];
     wonCards: CardType[];
 }
 
+interface MultiplayerGameState {
+    player1: GameState;
+    player2: GameState;
+    currentTurn: string;
+    gameStarted: boolean;
+    selectedCards: {
+        [playerId: string]: CardType | null;
+    };
+    battleReady: {
+        [playerId: string]: boolean;
+    };
+    winner: string | null;
+}
+
 export const Game: React.FC = () => {
-    const [player1, setPlayer1] = useState<PlayerState>({
-        ...createPlayer(uuidv4(), "Player 1"),
-        playedCards: [],
-        wonCards: []
-    });
-    const [player2, setPlayer2] = useState<PlayerState>({
-        ...createPlayer(uuidv4(), "Player 2"),
-        playedCards: [],
-        wonCards: []
-    });
+    const [gameId, setGameId] = useState<string | null>(null);
+    const [isHost, setIsHost] = useState(false);
+    const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
+    const [localPlayer, setLocalPlayer] = useState<GameState | null>(null);
     const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
     const [battleCards, setBattleCards] = useState<[CardType | null, CardType | null]>([null, null]);
     const [gameOver, setGameOver] = useState(false);
-    const [winner, setWinner] = useState<PlayerState | null>(null);
-    
-    useEffect(() => {
-        handleNewGame();
-    }, []);
+    const [winner, setWinner] = useState<GameState | null>(null);
 
-    const handleNewGame = () => {
-        const deck = shuffleDeck(createDeck());
+    useEffect(() => {
+        if (gameId) {
+            const gameRef = ref(database, `games/${gameId}/gameState`);
+            onValue(gameRef, (snapshot: any) => {
+                const data = snapshot.val();
+                if (data) {
+                    setGameState(data);
+                    updateLocalPlayerState(data);
+                }
+            });
+
+            return () => {
+                off(gameRef);
+            };
+        }
+    }, [gameId]);
+
+    const updateLocalPlayerState = (state: MultiplayerGameState) => {
+        const playerState = isHost ? state.player1 : state.player2;
+        setLocalPlayer(playerState);
+        setBattleCards([state.selectedCards[state.player1.id] || null, state.selectedCards[state.player2.id] || null]);
+        setGameOver(!!state.winner);
+        setWinner(state.winner ? (state.winner === state.player1.id ? state.player1 : state.player2) : null);
+    };
+
+    const handleGameStart = (newGameId: string, host: boolean) => {
+        setGameId(newGameId);
+        setIsHost(host);
         
-        setPlayer1({
-            ...createPlayer(uuidv4(), "Player 1"),
-            deck: deck.slice(0, 9),
-            playedCards: [],
-            wonCards: []
-        });
-        
-        setPlayer2({
-            ...createPlayer(uuidv4(), "Player 2"),
-            deck: deck.slice(9),
-            playedCards: [],
-            wonCards: []
-        });
-        
-        setBattleCards([null, null]);
-        setSelectedCard(null);
-        setGameOver(false);
-        setWinner(null);
+        if (host) {
+            const deck = shuffleDeck(createDeck());
+            const initialState: MultiplayerGameState = {
+                player1: {
+                    ...createPlayer(uuidv4(), "Player 1"),
+                    deck: deck.slice(0, 9),
+                    playedCards: [],
+                    wonCards: []
+                },
+                player2: {
+                    ...createPlayer(uuidv4(), "Player 2"),
+                    deck: deck.slice(9),
+                    playedCards: [],
+                    wonCards: []
+                },
+                currentTurn: "both",
+                gameStarted: false,
+                selectedCards: {},
+                battleReady: {},
+                winner: null
+            };
+            
+            const gameRef = ref(database, `games/${newGameId}/gameState`);
+            set(gameRef, initialState);
+        }
     };
 
     const handleCardSelect = (card: CardType) => {
-        if (!selectedCard && !gameOver && !player1.playedCards.find(c => c.id === card.id)) {
-            setSelectedCard(card);
-        }
-    };
-
-    const handleBattle = () => {
-        if (!selectedCard || gameOver || player2.deck.length === 0) return;
-
-        // Get a random unplayed card from player 2
-        const availableCards = player2.deck.filter(card => 
-            !player2.playedCards.find(played => played.id === card.id)
-        );
+        if (!gameState || !localPlayer) return;
+        if (gameOver || localPlayer.playedCards.find(c => c.id === card.id)) return;
         
-        if (availableCards.length === 0) {
-            setGameOver(true);
-            determineWinner();
-            return;
-        }
-
-        const randomIndex = Math.floor(Math.random() * availableCards.length);
-        const player2Card = { ...availableCards[randomIndex], faceUp: true };
-        
-        setBattleCards([selectedCard, player2Card]);
-        
-        const value1 = getCardValue(selectedCard.rank);
-        const value2 = getCardValue(player2Card.rank);
-        
-        // Add cards to played piles
-        const player1NewPlayedCards = [...player1.playedCards, selectedCard];
-        const player2NewPlayedCards = [...player2.playedCards, player2Card];
-        
-        if (value1 === value2) {
-            // Tie - cards stay in played piles
-            setPlayer1({
-                ...player1,
-                playedCards: player1NewPlayedCards
-            });
-            setPlayer2({
-                ...player2,
-                playedCards: player2NewPlayedCards
-            });
-            determineWinner(); // Check if we've reached a tie condition
+        if (selectedCard?.id === card.id) {
+            setSelectedCard(null);
+            const gameRef = ref(database, `games/${gameId}/gameState/selectedCards/${localPlayer.id}`);
+            set(gameRef, null);
         } else {
-            // Winner takes opponent's card only
-            const winner = value1 > value2 ? player1 : player2;
-            const loserCard = value1 > value2 ? player2Card : selectedCard;
-            const newWonCards = [...winner.wonCards, loserCard];
-            
-            if (winner.id === player1.id) {
-                setPlayer1({
-                    ...player1,
-                    playedCards: player1NewPlayedCards,
-                    wonCards: newWonCards
-                });
-                setPlayer2({
-                    ...player2,
-                    playedCards: player2NewPlayedCards
-                });
-            } else {
-                setPlayer2({
-                    ...player2,
-                    playedCards: player2NewPlayedCards,
-                    wonCards: newWonCards
-                });
-                setPlayer1({
-                    ...player1,
-                    playedCards: player1NewPlayedCards
-                });
-            }
-            
-            // Check for win condition - need 5 of opponent's cards to win
-            if (newWonCards.length >= 5) {
-                setWinner(winner);
-                setGameOver(true);
-            }
+            setSelectedCard(card);
+            const gameRef = ref(database, `games/${gameId}/gameState/selectedCards/${localPlayer.id}`);
+            set(gameRef, card);
         }
-        
-        setSelectedCard(null);
     };
 
-    const determineWinner = () => {
-        const p1Score = player1.wonCards.length;
-        const p2Score = player2.wonCards.length;
+    const handleBattle = async () => {
+        if (!gameState || !localPlayer || !selectedCard) return;
         
-        if (p1Score >= 5) {
-            setWinner(player1);
-            setGameOver(true);
-        } else if (p2Score >= 5) {
-            setWinner(player2);
-            setGameOver(true);
-        } else if (p1Score === 4 && p2Score === 4 && player1.playedCards.length === 9) {
-            // It's a tie only if both have 4 cards and all cards have been played
-            setGameOver(true);
+        const gameRef = ref(database, `games/${gameId}/gameState`);
+        const playerKey = isHost ? 'player1' : 'player2';
+        const opponentKey = isHost ? 'player2' : 'player1';
+        
+        // Mark this player as ready for battle
+        await set(ref(database, `games/${gameId}/gameState/battleReady/${localPlayer.id}`), true);
+        
+        // Check if both players are ready
+        if (gameState.battleReady[gameState[opponentKey].id]) {
+            const player1Card = gameState.selectedCards[gameState.player1.id];
+            const player2Card = gameState.selectedCards[gameState.player2.id];
+            
+            if (!player1Card || !player2Card) return;
+            
+            const value1 = getCardValue(player1Card.rank);
+            const value2 = getCardValue(player2Card.rank);
+            
+            const player1NewPlayedCards = [...gameState.player1.playedCards, player1Card];
+            const player2NewPlayedCards = [...gameState.player2.playedCards, player2Card];
+            
+            let updatedState = {
+                ...gameState,
+                player1: {
+                    ...gameState.player1,
+                    playedCards: player1NewPlayedCards
+                },
+                player2: {
+                    ...gameState.player2,
+                    playedCards: player2NewPlayedCards
+                },
+                selectedCards: {},
+                battleReady: {}
+            };
+            
+            if (value1 === value2) {
+                // Tie - cards stay in played piles
+            } else {
+                // Winner takes opponent's card
+                const winner = value1 > value2 ? gameState.player1 : gameState.player2;
+                const loserCard = value1 > value2 ? player2Card : player1Card;
+                
+                if (winner.id === gameState.player1.id) {
+                    updatedState.player1.wonCards = [...updatedState.player1.wonCards, loserCard];
+                } else {
+                    updatedState.player2.wonCards = [...updatedState.player2.wonCards, loserCard];
+                }
+                
+                // Check for game over
+                if (updatedState.player1.wonCards.length >= 5 || 
+                    updatedState.player2.wonCards.length >= 5 ||
+                    (player1NewPlayedCards.length === 9 && player2NewPlayedCards.length === 9)) {
+                    updatedState.winner = winner.id;
+                    
+                    // Update scores in the lobby
+                    const winnerKey = winner.id === gameState.player1.id ? 'player1Score' : 'player2Score';
+                    await set(ref(database, `games/${gameId}/${winnerKey}`), 
+                        (await get(ref(database, `games/${gameId}/${winnerKey}`))).val() + 1
+                    );
+                }
+            }
+            
+            await set(gameRef, updatedState);
         }
     };
+
+    const handleNewGame = async () => {
+        if (!gameId || !gameState) return;
+        
+        const deck = shuffleDeck(createDeck());
+        const newState: MultiplayerGameState = {
+            ...gameState,
+            player1: {
+                ...gameState.player1,
+                deck: deck.slice(0, 9),
+                playedCards: [],
+                wonCards: []
+            },
+            player2: {
+                ...gameState.player2,
+                deck: deck.slice(9),
+                playedCards: [],
+                wonCards: []
+            },
+            selectedCards: {},
+            battleReady: {},
+            winner: null
+        };
+        
+        const gameRef = ref(database, `games/${gameId}/gameState`);
+        await set(gameRef, newState);
+    };
+
+    if (!gameId) {
+        return <GameLobby onGameStart={handleGameStart} />;
+    }
+
+    if (!gameState || !localPlayer) {
+        return <div>Loading...</div>;
+    }
+
+    const opponent = isHost ? gameState.player2 : gameState.player1;
 
     return (
         <GameContainer>
@@ -279,18 +342,23 @@ export const Game: React.FC = () => {
             <Table>
                 <PlayerArea>
                     <PlayerStats>
-                        {player2.name}: {player2.deck.length - player2.playedCards.length} cards remaining
-                        {player2.wonCards.length > 0 && ` (Won: ${player2.wonCards.length})`}
+                        {opponent.name}: {opponent.deck.length - opponent.playedCards.length} cards remaining
+                        {opponent.wonCards.length > 0 && ` (Won: ${opponent.wonCards.length})`}
                     </PlayerStats>
                     <PlayArea>
                         <PlayedCards>
                             <PlayedCardsLabel>Played Cards:</PlayedCardsLabel>
-                            {player2.playedCards.map((card) => (
+                            {opponent.playedCards.map((card) => (
                                 <Card key={card.id} card={card} disabled isPlayer1={false} />
                             ))}
                         </PlayedCards>
-                        {battleCards[1] && (
-                            <Card card={battleCards[1]} disabled isPlayer1={false} />
+                        {battleCards[isHost ? 1 : 0] && battleCards[isHost ? 1 : 0] && (
+                            <Card 
+                                key={battleCards[isHost ? 1 : 0]!.id}
+                                card={battleCards[isHost ? 1 : 0]!}
+                                disabled 
+                                isPlayer1={false} 
+                            />
                         )}
                     </PlayArea>
                 </PlayerArea>
@@ -310,12 +378,12 @@ export const Game: React.FC = () => {
                 
                 <PlayerArea isBottom>
                     <PlayerStats>
-                        {player1.name}: {player1.deck.length - player1.playedCards.length} cards remaining
-                        {player1.wonCards.length > 0 && ` (Won: ${player1.wonCards.length})`}
+                        {localPlayer.name}: {localPlayer.deck.length - localPlayer.playedCards.length} cards remaining
+                        {localPlayer.wonCards.length > 0 && ` (Won: ${localPlayer.wonCards.length})`}
                     </PlayerStats>
                     <CardGrid>
-                        {player1.deck.map((card) => {
-                            const isPlayed = player1.playedCards.some(c => c.id === card.id);
+                        {localPlayer.deck.map((card) => {
+                            const isPlayed = localPlayer.playedCards.some(c => c.id === card.id);
                             return (
                                 <Card 
                                     key={card.id}
