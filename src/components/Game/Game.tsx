@@ -219,9 +219,10 @@ export const Game: React.FC = () => {
             });
             determineWinner(); // Check if we've reached a tie condition
         } else {
-            // Winner takes both cards
+            // Winner takes opponent's card only
             const winner = value1 > value2 ? player1 : player2;
-            const newWonCards = [...winner.wonCards, selectedCard, player2Card];
+            const loserCard = value1 > value2 ? player2Card : selectedCard;
+            const newWonCards = [...winner.wonCards, loserCard];
             
             if (winner.id === player1.id) {
                 setPlayer1({
@@ -245,7 +246,7 @@ export const Game: React.FC = () => {
                 });
             }
             
-            // Check for win condition immediately after updating won cards
+            // Check for win condition - need 5 of opponent's cards to win
             if (newWonCards.length >= 5) {
                 setWinner(winner);
                 setGameOver(true);
