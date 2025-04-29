@@ -26,6 +26,7 @@ const Table = styled.div`
     margin: 2rem;
     min-width: 80vw;
     min-height: 60vh;
+    position: relative;
 `;
 
 const PlayerArea = styled.div<{ isBottom?: boolean }>`
@@ -48,10 +49,10 @@ const CardGrid = styled.div`
 `;
 
 const PlayArea = styled.div`
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 2rem;
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    gap: 2rem;
     width: 100%;
     padding: 1rem;
 `;
@@ -80,24 +81,36 @@ const BattleArea = styled.div`
     padding: 1rem;
 `;
 
-const Controls = styled.div`
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 2rem;
+const WinnerMessage = styled.div`
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 2rem 4rem;
+    border-radius: 16px;
+    font-size: 3em;
+    font-family: 'Palatino', 'Garamond', serif;
+    z-index: 10;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
 `;
 
 const Button = styled.button<{ disabled?: boolean }>`
-    padding: 0.8rem 1.5rem;
-    font-size: 1.1em;
+    padding: 1rem 2rem;
+    font-size: 1.2em;
     border: none;
-    border-radius: 4px;
-    background: ${props => props.disabled ? '#bdc3c7' : '#3498db'};
+    border-radius: 8px;
+    background: ${props => props.disabled ? '#bdc3c7' : '#e74c3c'};
     color: white;
     cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-    transition: background 0.2s;
+    transition: all 0.2s;
+    margin-top: 1rem;
 
     &:hover {
-        background: ${props => props.disabled ? '#bdc3c7' : '#2980b9'};
+        background: ${props => props.disabled ? '#bdc3c7' : '#c0392b'};
+        transform: ${props => !props.disabled && 'scale(1.05)'};
     }
 `;
 
@@ -227,38 +240,28 @@ export const Game: React.FC = () => {
         }
         
         setSelectedCard(null);
-
-        // Check if all cards have been played
-        if (player1NewPlayedCards.length === 9 || player2NewPlayedCards.length === 9) {
-            setGameOver(true);
-            determineWinner();
-        }
+        determineWinner();
     };
 
     const determineWinner = () => {
         const p1Score = player1.wonCards.length;
         const p2Score = player2.wonCards.length;
         
-        if (p1Score > p2Score) {
+        if (p1Score >= 5) {
             setWinner(player1);
-        } else if (p2Score > p1Score) {
+            setGameOver(true);
+        } else if (p2Score >= 5) {
             setWinner(player2);
+            setGameOver(true);
+        } else if (p1Score === 4 && p2Score === 4 && player1.playedCards.length === 9) {
+            // It's a tie
+            setGameOver(true);
         }
-        // If equal, it's a tie (winner remains null)
     };
 
     return (
         <GameContainer>
             <h1 style={{ color: 'white' }}>Card Game</h1>
-            <Controls>
-                <Button onClick={handleNewGame}>New Game</Button>
-                <Button 
-                    onClick={handleBattle}
-                    disabled={!selectedCard || gameOver}
-                >
-                    Battle!
-                </Button>
-            </Controls>
             
             <Table>
                 <PlayerArea>
@@ -276,26 +279,19 @@ export const Game: React.FC = () => {
                         {battleCards[1] && (
                             <Card card={battleCards[1]} disabled />
                         )}
-                        <PlayedCards>
-                            <PlayedCardsLabel>Won Cards:</PlayedCardsLabel>
-                            {player2.wonCards.map((card) => (
-                                <Card key={card.id} card={card} disabled />
-                            ))}
-                        </PlayedCards>
                     </PlayArea>
                 </PlayerArea>
                 
                 <BattleArea>
-                    {gameOver ? (
-                        <div style={{ color: 'white', fontSize: '2em' }}>
+                    {gameOver && (
+                        <WinnerMessage>
                             {winner ? `${winner.name} Wins!` : "It's a Tie!"}
+                        </WinnerMessage>
+                    )}
+                    {battleCards[0] && battleCards[1] && !gameOver && (
+                        <div style={{ color: 'white', fontSize: '2em' }}>
+                            {battleCards[0].rank} vs {battleCards[1].rank}
                         </div>
-                    ) : (
-                        battleCards[0] && battleCards[1] && (
-                            <div style={{ color: 'white', fontSize: '2em' }}>
-                                {battleCards[0].rank} vs {battleCards[1].rank}
-                            </div>
-                        )
                     )}
                 </BattleArea>
                 
@@ -304,23 +300,6 @@ export const Game: React.FC = () => {
                         {player1.name}: {player1.deck.length - player1.playedCards.length} cards remaining
                         {player1.wonCards.length > 0 && ` (Won: ${player1.wonCards.length})`}
                     </PlayerStats>
-                    <PlayArea>
-                        <PlayedCards>
-                            <PlayedCardsLabel>Played Cards:</PlayedCardsLabel>
-                            {player1.playedCards.map((card) => (
-                                <Card key={card.id} card={card} disabled />
-                            ))}
-                        </PlayedCards>
-                        {battleCards[0] && (
-                            <Card card={battleCards[0]} disabled />
-                        )}
-                        <PlayedCards>
-                            <PlayedCardsLabel>Won Cards:</PlayedCardsLabel>
-                            {player1.wonCards.map((card) => (
-                                <Card key={card.id} card={card} disabled />
-                            ))}
-                        </PlayedCards>
-                    </PlayArea>
                     <CardGrid>
                         {player1.deck.map((card) => {
                             const isPlayed = player1.playedCards.some(c => c.id === card.id);
@@ -335,6 +314,12 @@ export const Game: React.FC = () => {
                             );
                         })}
                     </CardGrid>
+                    <Button 
+                        onClick={handleBattle}
+                        disabled={!selectedCard || gameOver}
+                    >
+                        Battle!
+                    </Button>
                 </PlayerArea>
             </Table>
         </GameContainer>

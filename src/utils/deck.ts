@@ -4,21 +4,21 @@ export const createDeck = (): Card[] => {
     const player1Cards: Card[] = [];
     const player2Cards: Card[] = [];
     
-    // Create cards 2-9 for Player 1 (Hearts)
-    for (let i = 2; i <= 9; i++) {
+    // Create cards 1-9 for Player 1 (red)
+    for (let i = 1; i <= 9; i++) {
         player1Cards.push({
             id: `hearts-${i}`,
-            suit: 'hearts' as Suit,
+            suit: 'hearts' as Suit, // Used for color
             rank: i.toString() as Rank,
             faceUp: true
         });
     }
     
-    // Create cards 2-9 for Player 2 (Spades)
-    for (let i = 2; i <= 9; i++) {
+    // Create cards 1-9 for Player 2 (black)
+    for (let i = 1; i <= 9; i++) {
         player2Cards.push({
             id: `spades-${i}`,
-            suit: 'spades' as Suit,
+            suit: 'spades' as Suit, // Used for color
             rank: i.toString() as Rank,
             faceUp: false
         });

@@ -9,13 +9,12 @@ interface CardProps {
     selected?: boolean;
 }
 
-const CardContainer = styled.div<{ disabled?: boolean; selected?: boolean }>`
+const CardContainer = styled.div<{ disabled?: boolean; selected?: boolean; isPlayer1?: boolean }>`
     width: 100px;
     height: 140px;
     border-radius: 8px;
     background: white;
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
     cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
@@ -29,39 +28,12 @@ const CardContainer = styled.div<{ disabled?: boolean; selected?: boolean }>`
     }
 `;
 
-const Suit = styled.div<{ color: string }>`
-    font-size: 2em;
-    color: ${props => props.color};
-`;
-
-const Rank = styled.div<{ color: string }>`
-    font-size: 1.5em;
+const Number = styled.div<{ color: string }>`
+    font-size: 3em;
     font-weight: bold;
     color: ${props => props.color};
+    font-family: 'Palatino', 'Garamond', serif;
 `;
-
-const getSuitSymbol = (suit: string) => {
-    switch (suit.toLowerCase()) {
-        case 'hearts': return '♥';
-        case 'diamonds': return '♦';
-        case 'clubs': return '♣';
-        case 'spades': return '♠';
-        default: return '';
-    }
-};
-
-const getSuitColor = (suit: string) => {
-    switch (suit.toLowerCase()) {
-        case 'hearts':
-        case 'diamonds':
-            return '#e74c3c';
-        case 'clubs':
-        case 'spades':
-            return '#2c3e50';
-        default:
-            return 'black';
-    }
-};
 
 export const Card: React.FC<CardProps> = ({ card, onClick, disabled, selected }) => {
     if (!card.faceUp) {
@@ -75,8 +47,7 @@ export const Card: React.FC<CardProps> = ({ card, onClick, disabled, selected })
         );
     }
 
-    const suitSymbol = getSuitSymbol(card.suit);
-    const color = getSuitColor(card.suit);
+    const color = card.suit === 'hearts' ? '#e74c3c' : '#2c3e50';
 
     return (
         <CardContainer 
@@ -84,8 +55,7 @@ export const Card: React.FC<CardProps> = ({ card, onClick, disabled, selected })
             disabled={disabled}
             selected={selected}
         >
-            <Rank color={color}>{card.rank}</Rank>
-            <Suit color={color}>{suitSymbol}</Suit>
+            <Number color={color}>{card.rank}</Number>
         </CardContainer>
     );
 }; 
