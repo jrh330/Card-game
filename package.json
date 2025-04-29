@@ -1,8 +1,11 @@
 {
   "name": "card-game",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
+  "vercel": {
+    "buildCommand": "npm run build"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
