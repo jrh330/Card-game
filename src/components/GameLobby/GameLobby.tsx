@@ -1,188 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import styled from '@emotion/styled';
-import { ref, set, onValue, off } from 'firebase/database';
-import { database } from '../../firebase';
-import { v4 as uuidv4 } from 'uuid';
+import React, { useState, useEffect } from 'react'
+import { socket } from '../../services/socket'
 
-const LobbyContainer = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 2rem;
-    gap: 1rem;
-    background: #2c3e50;
-    min-height: 100vh;
-    color: white;
-`;
+export const GameLobby = () => {
+  const [playerName, setPlayerName] = useState('')
+  const [status, setStatus] = useState('Checking connection...')
+  const [gameId, setGameId] = useState('')
 
-const Input = styled.input`
-    padding: 0.5rem 1rem;
-    font-size: 1.2em;
-    border: none;
-    border-radius: 4px;
-    width: 300px;
-    margin: 0.5rem 0;
-`;
+  useEffect(() => {
+    // Connection status handlers
+    socket.on('connect', () => {
+      setStatus('Connected to server')
+      console.log('Connected to server')
+    })
 
-const Button = styled.button`
-    padding: 1rem 2rem;
-    font-size: 1.2em;
-    border: none;
-    border-radius: 8px;
-    background: #e74c3c;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s;
+    socket.on('gameCreated', (data) => {
+      setStatus(`Game created! Room ID: ${data.roomId}`)
+      setGameId(data.roomId)
+    })
 
-    &:hover {
-        background: #c0392b;
-        transform: scale(1.05);
+    return () => {
+      socket.off('connect')
+      socket.off('gameCreated')
     }
-`;
+  }, [])
 
-const InviteLink = styled.div`
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    margin: 1rem 0;
-    word-break: break-all;
-`;
-
-const ScoreBoard = styled.div`
-    background: rgba(255, 255, 255, 0.1);
-    padding: 1rem;
-    border-radius: 8px;
-    margin-top: 2rem;
-    text-align: center;
-`;
-
-interface GameLobbyProps {
-    onGameStart: (gameId: string, isHost: boolean) => void;
-}
-
-interface GameState {
-    player1Name: string;
-    player2Name: string;
-    player1Score: number;
-    player2Score: number;
-}
-
-export const GameLobby: React.FC<GameLobbyProps> = ({ onGameStart }) => {
-    const [playerName, setPlayerName] = useState('');
-    const [gameId, setGameId] = useState('');
-    const [isHost, setIsHost] = useState(true);
-    const [gameState, setGameState] = useState<GameState | null>(null);
-
-    useEffect(() => {
-        // Check if there's a game ID in the URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const gameIdParam = urlParams.get('gameId');
-        if (gameIdParam) {
-            setGameId(gameIdParam);
-            setIsHost(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (gameId) {
-            const gameRef = ref(database, `games/${gameId}`);
-            onValue(gameRef, (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    setGameState(data);
-                }
-            });
-
-            return () => {
-                off(gameRef);
-            };
-        }
-    }, [gameId]);
-
-    const createGame = async () => {
-        if (!playerName.trim()) return;
-        
-        const newGameId = uuidv4();
-        const gameRef = ref(database, `games/${newGameId}`);
-        
-        await set(gameRef, {
-            player1Name: playerName,
-            player2Name: '',
-            player1Score: 0,
-            player2Score: 0
-        });
-
-        setGameId(newGameId);
-        window.history.pushState({}, '', `?gameId=${newGameId}`);
-        onGameStart(newGameId, true);
-    };
-
-    const joinGame = async () => {
-        if (!playerName.trim() || !gameId) return;
-        
-        const gameRef = ref(database, `games/${gameId}`);
-        await set(gameRef, {
-            ...gameState,
-            player2Name: playerName
-        });
-
-        onGameStart(gameId, false);
-    };
-
-    const getInviteLink = () => {
-        return `${window.location.origin}${window.location.pathname}?gameId=${gameId}`;
-    };
-
-    if (!isHost && !gameState) {
-        return (
-            <LobbyContainer>
-                <h2>Join Game</h2>
-                <Input
-                    type="text"
-                    placeholder="Enter your name"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                />
-                <Button onClick={joinGame}>Join Game</Button>
-            </LobbyContainer>
-        );
+  const handleCreateGame = () => {
+    if (!playerName.trim()) {
+      alert('Please enter your name')
+      return
     }
+    console.log('Attempting to create game with name:', playerName)
+    socket.emit('createGame', { playerName: playerName })
+  }
+  return (
+    <div style={{ marginTop: '20px' }}>
+      <h2>Game Lobby</h2>
+      <p style={{ 
+        color: status.includes('Connected') ? 'green' : 'red',
+        fontWeight: 'bold' 
+      }}>
+        {status}
+      </p>
+      
+      <div style={{ marginTop: '20px' }}>
+        <input 
+          type="text" 
+          placeholder="Enter your name"
+          value={playerName}
+          onChange={(e) => setPlayerName(e.target.value)}
+          style={{ marginRight: '10px', padding: '5px' }}
+        />
+        <button 
+          onClick={handleCreateGame}
+          style={{ padding: '5px 10px' }}
+        >
+          Create Game
+        </button>
+      </div>
 
-    return (
-        <LobbyContainer>
-            <h2>{isHost ? 'Create Game' : 'Join Game'}</h2>
-            <Input
-                type="text"
-                placeholder="Enter your name"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-            />
-            {isHost ? (
-                <Button onClick={createGame}>Create Game</Button>
-            ) : (
-                <Button onClick={joinGame}>Join Game</Button>
-            )}
-
-            {gameId && isHost && (
-                <>
-                    <h3>Share this link with your opponent:</h3>
-                    <InviteLink>{getInviteLink()}</InviteLink>
-                    {gameState?.player2Name && (
-                        <div>
-                            <h3>Opponent joined:</h3>
-                            <p>{gameState.player2Name}</p>
-                        </div>
-                    )}
-                </>
-            )}
-
-            {gameState && (
-                <ScoreBoard>
-                    <h3>Score Board</h3>
-                    <p>{gameState.player1Name}: {gameState.player1Score}</p>
-                    <p>{gameState.player2Name || 'Waiting for opponent'}: {gameState.player2Score}</p>
-                </ScoreBoard>
-            )}
-        </LobbyContainer>
-    );
-}; 
+      {gameId && (
+        <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f0f0f0' }}>
+          <p>Share this Game ID with your opponent: <strong>{gameId}</strong></p>
+        </div>
+      )}
+    </div>
+  )
+}
