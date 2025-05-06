@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import styled from '@emotion/styled';
 import { GameLobby } from '../GameLobby/GameLobby';
 
@@ -47,23 +47,12 @@ const PlayArea = styled.div`
 
 export const Game: React.FC = () => {
     const [gameId, setGameId] = useState<string | null>(null);
-    const [gameState, setGameState] = useState<any>(null);
-    const [localPlayer, setLocalPlayer] = useState<any>(null);
-    const [gameOver, setGameOver] = useState(false);
-    const [winner, setWinner] = useState<any>(null);
-
-    useEffect(() => {
-        // Placeholder for game state subscription logic
-    }, [gameId]);
 
     if (!gameId) {
         return <GameLobby onGameStart={setGameId} />;
     }
 
-    if (!gameState || !localPlayer) {
-        return <div>Loading...</div>;
-    }
-
+    // Placeholder for when gameId is set
     return (
         <GameContainer>
             <Table>
@@ -77,11 +66,6 @@ export const Game: React.FC = () => {
                     {/* Opponent's hand, etc. */}
                 </PlayerArea>
             </Table>
-            {gameOver && winner && (
-                <div>
-                    <h2>Game Over! Winner: {winner.name}</h2>
-                </div>
-            )}
         </GameContainer>
     );
 };
