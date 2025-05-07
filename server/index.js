@@ -4,32 +4,29 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
+
+// Basic CORS setup for Express
 app.use(cors());
 
 const httpServer = createServer(app);
 
-// Get allowed origins from environment variable or default to localhost
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ["http://localhost:5173"];
-
-console.log('Allowed origins:', allowedOrigins);
-
+// Socket.IO setup with proper CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: "*", // Allow all origins in development
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
+// Game state management
 const gameRooms = new Map();
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
+  // Create a new game room
   socket.on('createGame', (data) => {
-    console.log('Creating game for player:', data.playerName);
     const roomId = Math.random().toString(36).substring(7);
     gameRooms.set(roomId, {
       id: roomId,
@@ -38,9 +35,10 @@ io.on('connection', (socket) => {
     });
     socket.join(roomId);
     socket.emit('gameCreated', { roomId, playerId: socket.id });
-    console.log('Game created with room ID:', roomId);
+    console.log('Game created:', roomId);
   });
 
+  // Join an existing game room
   socket.on('joinGame', ({ roomId, playerName }) => {
     const room = gameRooms.get(roomId);
     if (room && room.players.length < 2) {
@@ -54,6 +52,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle disconnection
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     for (const [roomId, room] of gameRooms.entries()) {
@@ -70,12 +69,12 @@ io.on('connection', (socket) => {
   });
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 const PORT = process.env.PORT || 3002;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('Server configuration:', {
-    port: PORT,
-    allowedOrigins,
-    environment: process.env.NODE_ENV
-  });
 });
