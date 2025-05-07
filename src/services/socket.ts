@@ -12,16 +12,24 @@ const socket = io(serverUrl, {
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
   timeout: 10000,
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
+  withCredentials: true
 });
 
-// Debug logging
+// More detailed connection logging
 socket.on('connect', () => {
-  console.log('Connected to server');
+  console.log('Connected to server successfully');
+  console.log('Socket ID:', socket.id);
+  console.log('Connection state:', socket.connected);
 });
 
 socket.on('connect_error', (error) => {
   console.error('Connection error:', error);
+  console.log('Connection details:', {
+    serverUrl,
+    readyState: socket.connected,
+    id: socket.id
+  });
 });
 
 socket.on('disconnect', (reason) => {
