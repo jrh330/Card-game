@@ -7,10 +7,19 @@ const app = express();
 app.use(cors());
 
 const httpServer = createServer(app);
+
+// Get allowed origins from environment variable or default to localhost
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ["http://localhost:5173"];
+
+console.log('Allowed origins:', allowedOrigins);
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173", // Your Vite dev server
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -61,7 +70,12 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = 3002;
+const PORT = process.env.PORT || 3002;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('Server configuration:', {
+    port: PORT,
+    allowedOrigins,
+    environment: process.env.NODE_ENV
+  });
 });
