@@ -1,68 +1,113 @@
-import React, { useState, useEffect } from 'react'
-import { socket } from '../../services/socket'
+import React, { useState, useEffect } from 'react';
 
-export const GameLobby = () => {
-  const [playerName, setPlayerName] = useState('')
-  const [status, setStatus] = useState('Checking connection...')
-  const [gameId, setGameId] = useState('')
+const GameLobby: React.FC = () => {
+  const [playerName, setPlayerName] = useState('');
+  const [roomId, setRoomId] = useState('');
+  const [gameCreated, setGameCreated] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Connection status handlers
-    socket.on('connect', () => {
-      setStatus('Connected to server')
-      console.log('Connected to server')
-    })
+    // Test server connection
+    fetch('https://card-game-webservice.onrender.com/health')
+      .then(response => response.json())
+      .then(data => console.log('Server health check:', data))
+      .catch(error => console.error('Server health check failed:', error));
+  }, []);
 
-    socket.on('gameCreated', (data) => {
-      setStatus(`Game created! Room ID: ${data.roomId}`)
-      setGameId(data.roomId)
-    })
-
-    return () => {
-      socket.off('connect')
-      socket.off('gameCreated')
-    }
-  }, [])
-
-  const handleCreateGame = () => {
+  const handleCreateGame = async () => {
+    console.log('Attempting to create game with name:', playerName);
     if (!playerName.trim()) {
-      alert('Please enter your name')
-      return
+      setError('Please enter your name');
+      return;
     }
-    console.log('Attempting to create game with name:', playerName)
-    socket.emit('createGame', { playerName: playerName })
-  }
+
+    try {
+      const response = await fetch('https://card-game-webservice.onrender.com/api/create-game', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ playerName }),
+      });
+
+      const data = await response.json();
+      console.log('Create game response:', data);
+
+      if (data.success) {
+        setRoomId(data.roomId);
+        setGameCreated(true);
+      } else {
+        setError('Failed to create game');
+      }
+    } catch (error) {
+      console.error('Error creating game:', error);
+      setError('Failed to connect to server');
+    }
+  };
+
+  const handleJoinGame = async () => {
+    if (!playerName.trim() || !roomId.trim()) {
+      setError('Please enter both your name and room ID');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://card-game-webservice.onrender.com/api/join-game', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ roomId, playerName }),
+      });
+
+      const data = await response.json();
+      console.log('Join game response:', data);
+
+      if (data.success) {
+        setGameCreated(true);
+      } else {
+        setError('Failed to join game');
+      }
+    } catch (error) {
+      console.error('Error joining game:', error);
+      setError('Failed to connect to server');
+    }
+  };
+
   return (
-    <div style={{ marginTop: '20px' }}>
+    <div className="game-lobby">
       <h2>Game Lobby</h2>
-      <p style={{ 
-        color: status.includes('Connected') ? 'green' : 'red',
-        fontWeight: 'bold' 
-      }}>
-        {status}
-      </p>
+      {error && <div className="error">{error}</div>}
       
-      <div style={{ marginTop: '20px' }}>
-        <input 
-          type="text" 
-          placeholder="Enter your name"
+      <div className="input-group">
+        <input
+          type="text"
           value={playerName}
           onChange={(e) => setPlayerName(e.target.value)}
-          style={{ marginRight: '10px', padding: '5px' }}
+          placeholder="Enter your name"
         />
-        <button 
-          onClick={handleCreateGame}
-          style={{ padding: '5px 10px' }}
-        >
-          Create Game
-        </button>
       </div>
 
-      {gameId && (
-        <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f0f0f0' }}>
-          <p>Share this Game ID with your opponent: <strong>{gameId}</strong></p>
+      {!gameCreated ? (
+        <button onClick={handleCreateGame}>Create Game</button>
+      ) : (
+        <div className="room-info">
+          <p>Room ID: {roomId}</p>
+          <p>Share this ID with your opponent</p>
         </div>
       )}
+
+      <div className="join-game">
+        <input
+          type="text"
+          value={roomId}
+          onChange={(e) => setRoomId(e.target.value)}
+          placeholder="Enter room ID to join"
+        />
+        <button onClick={handleJoinGame}>Join Game</button>
+      </div>
     </div>
-  )
-}
+  );
+};
+
+export default GameLobby;

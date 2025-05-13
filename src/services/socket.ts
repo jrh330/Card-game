@@ -12,15 +12,16 @@ const socket = io(serverUrl, {
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
   timeout: 10000,
-  transports: ['websocket', 'polling'],
+  transports: ['polling'], // Only use polling
+  forceNew: true,
   withCredentials: true
 });
 
-// More detailed connection logging
+// Debug logging
 socket.on('connect', () => {
   console.log('Connected to server successfully');
   console.log('Socket ID:', socket.id);
-  console.log('Connection state:', socket.connected);
+  console.log('Transport:', socket.io.engine.transport.name);
 });
 
 socket.on('connect_error', (error) => {
@@ -28,12 +29,18 @@ socket.on('connect_error', (error) => {
   console.log('Connection details:', {
     serverUrl,
     readyState: socket.connected,
-    id: socket.id
+    id: socket.id,
+    transport: socket.io.engine.transport.name
   });
 });
 
 socket.on('disconnect', (reason) => {
   console.log('Disconnected:', reason);
+});
+
+// Add error event listener
+socket.on('error', (error) => {
+  console.error('Socket error:', error);
 });
 
 export { socket };
