@@ -23,6 +23,7 @@ const GameLobby: React.FC = () => {
     }
 
     try {
+      console.log('Sending create game request...');
       const response = await fetch('https://card-game-webservice.onrender.com/api/create-game', {
         method: 'POST',
         headers: {
@@ -31,15 +32,18 @@ const GameLobby: React.FC = () => {
         body: JSON.stringify({ playerName }),
       });
 
+      console.log('Create game response status:', response.status);
       const data = await response.json();
-      console.log('Create game response:', data);
+      console.log('Create game response data:', data);
 
       if (data.success) {
         setRoomId(data.roomId);
         setGameCreated(true);
         setError('');
+        console.log('Game created successfully with room ID:', data.roomId);
       } else {
         setError(data.error || 'Failed to create game');
+        console.error('Failed to create game:', data.error);
       }
     } catch (error) {
       console.error('Error creating game:', error);
@@ -54,6 +58,7 @@ const GameLobby: React.FC = () => {
     }
 
     try {
+      console.log('Attempting to join game with:', { roomId, playerName });
       const response = await fetch('https://card-game-webservice.onrender.com/api/join-game', {
         method: 'POST',
         headers: {
@@ -62,15 +67,19 @@ const GameLobby: React.FC = () => {
         body: JSON.stringify({ roomId, playerName }),
       });
 
+      console.log('Join game response status:', response.status);
       const data = await response.json();
-      console.log('Join game response:', data);
+      console.log('Join game response data:', data);
 
       if (data.success) {
         setGameCreated(true);
         setGameState(data.room);
         setError('');
+        console.log('Successfully joined game:', data.room);
       } else {
-        setError(data.error || 'Failed to join game');
+        const errorMessage = data.error || 'Failed to join game';
+        setError(errorMessage);
+        console.error('Failed to join game:', errorMessage);
       }
     } catch (error) {
       console.error('Error joining game:', error);
