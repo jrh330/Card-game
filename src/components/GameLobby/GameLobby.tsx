@@ -5,6 +5,7 @@ const GameLobby: React.FC = () => {
   const [roomId, setRoomId] = useState('');
   const [gameCreated, setGameCreated] = useState(false);
   const [error, setError] = useState('');
+  const [gameState, setGameState] = useState<any>(null);
 
   useEffect(() => {
     // Test server connection
@@ -36,8 +37,9 @@ const GameLobby: React.FC = () => {
       if (data.success) {
         setRoomId(data.roomId);
         setGameCreated(true);
+        setError('');
       } else {
-        setError('Failed to create game');
+        setError(data.error || 'Failed to create game');
       }
     } catch (error) {
       console.error('Error creating game:', error);
@@ -65,8 +67,10 @@ const GameLobby: React.FC = () => {
 
       if (data.success) {
         setGameCreated(true);
+        setGameState(data.room);
+        setError('');
       } else {
-        setError('Failed to join game');
+        setError(data.error || 'Failed to join game');
       }
     } catch (error) {
       console.error('Error joining game:', error);
@@ -77,35 +81,66 @@ const GameLobby: React.FC = () => {
   return (
     <div className="game-lobby">
       <h2>Game Lobby</h2>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" style={{ color: 'red', margin: '10px 0' }}>{error}</div>}
       
-      <div className="input-group">
+      <div className="input-group" style={{ margin: '10px 0' }}>
         <input
           type="text"
           value={playerName}
           onChange={(e) => setPlayerName(e.target.value)}
           placeholder="Enter your name"
+          style={{ padding: '5px', marginRight: '10px' }}
         />
       </div>
 
       {!gameCreated ? (
-        <button onClick={handleCreateGame}>Create Game</button>
+        <button 
+          onClick={handleCreateGame}
+          style={{ 
+            padding: '5px 10px',
+            margin: '10px 0',
+            cursor: 'pointer'
+          }}
+        >
+          Create Game
+        </button>
       ) : (
-        <div className="room-info">
+        <div className="room-info" style={{ margin: '10px 0' }}>
           <p>Room ID: {roomId}</p>
           <p>Share this ID with your opponent</p>
         </div>
       )}
 
-      <div className="join-game">
+      <div className="join-game" style={{ margin: '10px 0' }}>
         <input
           type="text"
           value={roomId}
           onChange={(e) => setRoomId(e.target.value)}
           placeholder="Enter room ID to join"
+          style={{ padding: '5px', marginRight: '10px' }}
         />
-        <button onClick={handleJoinGame}>Join Game</button>
+        <button 
+          onClick={handleJoinGame}
+          style={{ 
+            padding: '5px 10px',
+            cursor: 'pointer'
+          }}
+        >
+          Join Game
+        </button>
       </div>
+
+      {gameState && (
+        <div className="game-state" style={{ margin: '20px 0', padding: '10px', border: '1px solid #ccc' }}>
+          <h3>Game Status: {gameState.status}</h3>
+          <h4>Players:</h4>
+          <ul>
+            {gameState.players.map((player: any) => (
+              <li key={player.id}>{player.name}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
