@@ -1,6 +1,7 @@
-console.log('App loaded');
 import React from 'react';
-import GameLobby from './components/GameLobby/GameLobby';
+import GameLobby from './components/GameLobby';
+
+console.log('App loaded');
 
 function App() {
   return (

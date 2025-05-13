@@ -111,4 +111,4 @@ const GameLobby: React.FC = () => {
   );
 };
 
-export default GameLobby;
+export { default } from './GameLobby';
