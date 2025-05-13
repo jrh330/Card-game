@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-// Change to default export
 const GameLobby: React.FC = () => {
   const [playerName, setPlayerName] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -111,4 +110,4 @@ const GameLobby: React.FC = () => {
   );
 };
 
-export { default } from './GameLobby';
+export default GameLobby;

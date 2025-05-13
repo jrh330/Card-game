@@ -1,5 +1,5 @@
 import React from 'react';
-import GameLobby from './components/GameLobby';
+import GameLobby from './components/GameLobby/GameLobby';
 
 console.log('App loaded');
 
