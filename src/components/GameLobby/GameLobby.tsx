@@ -6,6 +6,7 @@ const GameLobby: React.FC = () => {
   const [gameCreated, setGameCreated] = useState(false);
   const [error, setError] = useState('');
   const [gameState, setGameState] = useState<any>(null);
+  const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
     // Test server connection
@@ -57,6 +58,13 @@ const GameLobby: React.FC = () => {
       return;
     }
 
+    if (isJoining) {
+      return; // Prevent multiple join attempts
+    }
+
+    setIsJoining(true);
+    setError('');
+
     try {
       console.log('Attempting to join game with:', { roomId, playerName });
       const response = await fetch('https://card-game-webservice.onrender.com/api/join-game', {
@@ -84,6 +92,8 @@ const GameLobby: React.FC = () => {
     } catch (error) {
       console.error('Error joining game:', error);
       setError('Failed to connect to server');
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -130,12 +140,14 @@ const GameLobby: React.FC = () => {
         />
         <button 
           onClick={handleJoinGame}
+          disabled={isJoining}
           style={{ 
             padding: '5px 10px',
-            cursor: 'pointer'
+            cursor: isJoining ? 'not-allowed' : 'pointer',
+            opacity: isJoining ? 0.7 : 1
           }}
         >
-          Join Game
+          {isJoining ? 'Joining...' : 'Join Game'}
         </button>
       </div>
 
