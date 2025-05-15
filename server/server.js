@@ -1,4 +1,4 @@
-// server/index.js
+// server/server.js
 const express = require('express');
 const cors = require('cors');
 const database = require('./config/database');
@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Add a test endpoint
+// Test endpoint
 app.get('/test', (req, res) => {
   res.json({ message: 'Server is working!' });
 });
@@ -59,6 +59,11 @@ app.post('/api/create-game', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3002;
+
+// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('Available endpoints:');
+  console.log('GET  /test');
+  console.log('POST /api/create-game');
 });
